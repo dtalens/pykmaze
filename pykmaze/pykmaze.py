@@ -316,4 +316,3 @@ if __name__ == '__main__':
                         
     except AssertionError, e:
         print >> sys.stderr, 'Error: %s' % e[0]
-
