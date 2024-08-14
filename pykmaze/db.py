@@ -63,7 +63,7 @@ class KeymazeCache(object):
             self.log.debug('Querying device info')
             info = self.device.get_information()
             if not info:
-                raise AssertionErrror('Unable to retrieve device information')
+                raise AssertionError('Unable to retrieve device information')
             c.execute('SELECT device FROM dev_info WHERE serialnumber=?',
                       (info['serialnumber'], ))
             if not c.fetchone():
