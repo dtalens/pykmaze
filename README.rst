@@ -11,6 +11,8 @@ application software.
 Pykmaze alleviates this issue and allows to transfer data from/to the device 
 with any host.
 
+Update for use with python 3.X.
+
 Features
 ~~~~~~~~
 
