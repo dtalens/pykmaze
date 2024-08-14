@@ -1,7 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # Copyright (c) 2008-2011 Emmanuel Blot <emmanuel.blot@free.fr>
+# Modified 2024: Dani Talens <databio@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -21,11 +22,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-from distutils.core import setup
+from setuptools import setup  # Canvi de distutils.core a setuptools
 
 def _read(fname):
     import os
-    return open(os.path.join(os.path.dirname(__file__), fname)).read()
+    with open(os.path.join(os.path.dirname(__file__), fname), encoding='utf-8') as f:  # afegit encoding per compatibilitat amb Python 3
+        return f.read()
 
 setup(
     name='pykmaze',
@@ -34,11 +36,11 @@ setup(
     author='Emmanuel Blot',
     author_email='emmanuel.blot@free.fr',
     license='MIT',
-    keywords = 'keymaze geonaute kml kmz gps',
-    url='http://github.com/eblot/pykmaze',
-    download_url='https://github.com/eblot/pykmaze/tarball/master',
+    keywords='keymaze geonaute kml kmz gps',
+    url='http://github.com/dtalens/pykmaze',
+    download_url='https://github.com/dtalens/pykmaze/tarball/master',
     packages=['pykmaze'],
-    requires=['serial (>= 2.5)'],
+    install_requires=['pyserial>=2.5'],  # canvi de requires a install_requires
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
@@ -47,8 +49,7 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Operating System :: MacOS :: MacOS X',
         'Operating System :: POSIX',
-        'Programming Language :: Python :: 2.6',
-        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
         'Topic :: Scientific/Engineering :: Medical Science Apps.',
         'Topic :: Utilities'
     ],
