@@ -2,6 +2,7 @@
 # Communicate w/ a Decathlon Keymaze 500/700 devices
 #-----------------------------------------------------------------------------
 # @author Emmanuel Blot <manu.blot@gmail.com> (c) 2009
+# Dani Talens <databio@gmail.com>
 # @license MIT License, see LICENSE file
 # @note The communication protocol here has been fully reverse-engineered from 
 #       the serial data stream initiated from the Windows (c) GUI application.
@@ -18,7 +19,7 @@ import time
 try:
     import serial
 except ImportError:
-    print >> sys.stderr, "Missing serial module"
+    print("Missing serial module", file=sys.stderr)
     sys.exit(1)
 
 class KeymazePort(object):
@@ -52,7 +53,7 @@ class KeymazePort(object):
                 from serialext import SerialExpander
                 serialclass = SerialExpander.serialclass(portname)
             except ImportError:
-                print "No pyftdi"
+                print("No pyftdi")
                 serialclass = serial.Serial
             self._port = serialclass(port=portname,
                                      baudrate=self.KM_BAUDRATE)
@@ -60,32 +61,32 @@ class KeymazePort(object):
                 self._port.open()
         except serial.serialutil.SerialException:
             raise AssertionError('Cannot open device "%s"' % portname)
-        if not self._port.isOpen():
+        if not self._port.is_open:
             raise AssertionError('Cannot open device "%s"' % portname)
         self._port.setRTS(level=0)
         self._port.setDTR(level=0)
         self._drain()
             
     def close(self):
-        if self._port and self._port.isOpen:
+        if self._port and self._port.is_open:
             self._port.close()
     
     def get_information(self):
         """Obtaint the device information"""
         (resp, ack) = self._request_device(self.CMD_INFO_GET)
-        (name,sn,user,gender,age,x1,weight,x2,height,y,m,d) = \
+        (name, sn, user, gender, age, x1, weight, x2, height, y, m, d) = \
             struct.unpack('>%s' % self.INFO_FMT, resp)
-        name = name[:name.find('\0')]
-        sn = sn[:sn.find('\0')]
-        user = user[:user.find('\0')]
+        name = name[:name.find(b'\0')].decode()
+        sn = sn[:sn.find(b'\0')].decode()
+        user = user[:user.find(b'\0')].decode()
         info = { 'name' : name,
                  'serialnumber' : sn,
                  'user' : user,
-                 'gender' : gender and 'female' or 'male',
+                 'gender' : 'female' if gender else 'male',
                  'age' : age,
                  'weight' : weight,
                  'height' : height,
-                 'birthday' : datetime.date(1792+y,1+m,d) }
+                 'birthday' : datetime.date(1792 + y, 1 + m, d) }
         return info
             
     def get_trackpoint_catalog(self):
@@ -95,25 +96,24 @@ class KeymazePort(object):
         start = 0
         while start < len(resp):
             # New catatalog entry
-            end = start+struct.calcsize('>%s' % self.TP_CAT_FMT)
+            end = start + struct.calcsize('>%s' % self.TP_CAT_FMT)
             if end > len(resp):
-                raise AssertionError('Missing data in response %d / %d' % \
-                                        end, len(resp))
+                raise AssertionError('Missing data in response %d / %d' % (end, len(resp)))
             # there are 6 trailing bytes whose signification is yet to be
             # discovered, decoded here into the silent variable '_'
-            (yy,mm,dd,hh,mn,ss,lap,dtime,dst,kcal,mspd,mhr,ahr,cmi,cmd,
-             _,track,idx) = \
+            (yy, mm, dd, hh, mn, ss, lap, dtime, dst, kcal, mspd, mhr, ahr, cmi, cmd,
+             _, track, idx) = \
                 struct.unpack('>%s' % self.TP_CAT_FMT, resp[start:end])
             if lap > 1:
                 raise AssertionError('Multi-lap entries not supported')
-            dtime /= 10
-            lap_hour = dtime//3600
-            dtime -= lap_hour*3600
-            lap_min = dtime//60
-            dtime -= lap_min*60
-            lap_sec = int(lap_min)
-            tp = { 'start': inttime(datetime.datetime(2000+yy,mm,dd,hh,mn,ss)),
-                   'time' : 3600*lap_hour+60*lap_min+lap_sec,
+            dtime //= 10
+            lap_hour = dtime // 3600
+            dtime -= lap_hour * 3600
+            lap_min = dtime // 60
+            dtime -= lap_min * 60
+            lap_sec = int(dtime)
+            tp = { 'start': inttime(datetime.datetime(2000 + yy, mm, dd, hh, mn, ss)),
+                   'time' : 3600 * lap_hour + 60 * lap_min + lap_sec,
                    'distance': dst,
                    'kcal' : kcal,
                    'maxspeed' : mspd,
@@ -134,22 +134,22 @@ class KeymazePort(object):
         trackpoints = []
         start = 0
         # New catatalog entry
-        end = start+struct.calcsize('>%s%s' % (self.TP_CAT_FMT, 
-                                               self.TP_HDR_FMT))
+        end = start + struct.calcsize('>%s%s' % (self.TP_CAT_FMT, 
+                                                 self.TP_HDR_FMT))
         if end > len(resp):
             raise AssertionError('Missing data in response %d / %d' % \
                                     (end, len(resp)))
         # there are 6 trailing bytes whose signification is yet to be
         # discovered, decoded here into the silent variable '_'
-        (yy,mm,dd,hh,mn,ss,lap,dtime,dst,kcal,mspd,mhr,ahr,cmi,cmd,_,
-         track,idx,stop,ttime,tdst,tkcal,tmspd,tmhr,tahr,count) = \
+        (yy, mm, dd, hh, mn, ss, lap, dtime, dst, kcal, mspd, mhr, ahr, cmi, cmd, _,
+         track, idx, stop, ttime, tdst, tkcal, tmspd, tmhr, tahr, count) = \
             struct.unpack('>%s%s' % (self.TP_CAT_FMT, self.TP_HDR_FMT), 
                           resp[start:end])
         if lap > 1:
             raise AssertionError('Multi-lap entries not supported')
-        lap_sec = dtime//10
-        lap_msec = (dtime-lap_sec*10)*100
-        tp = { 'start': datetime.datetime(2000+yy,mm,dd,hh,mn,ss),
+        lap_sec = dtime // 10
+        lap_msec = (dtime - lap_sec * 10) * 100
+        tp = { 'start': datetime.datetime(2000 + yy, mm, dd, hh, mn, ss),
                'time' : datetime.timedelta(0, lap_sec, 0, lap_msec),
                'distance': dst,
                'kcal' : kcal,
@@ -161,7 +161,7 @@ class KeymazePort(object):
                'count' : count,
                'points' : []}
         rem_tp = count
-        print 'Points: %d' % count
+        print('Points: %d' % count)
         while rem_tp > 0:
             (resp, ack) = self._request_device(self.CMD_TP_GET_NEXT,
                                                accept=[self.ACK_TP_GET_NONE,
@@ -170,29 +170,31 @@ class KeymazePort(object):
                 # no more point
                 return tp
             start = 0
-            end = start+struct.calcsize('>%s' % self.TP_CAT_FMT)
+            end = start + struct.calcsize('>%s' % self.TP_CAT_FMT)
             header = struct.unpack('>%s' % self.TP_CAT_FMT, resp[start:end])
             entry_len = struct.calcsize('>%s' % self.TP_ENT_FMT)
             start = end
             points = []
-            while start+entry_len <= len(resp):
-                (x,y,z,s,h,d) = struct.unpack('>%s' % self.TP_ENT_FMT, 
-                                              resp[start:start+entry_len])
-                points.append((x,y,z,s,h,d))
+            while start + entry_len <= len(resp):
+                (x, y, z, s, h, d) = struct.unpack('>%s' % self.TP_ENT_FMT, 
+                                                   resp[start:start + entry_len])
+                points.append((x, y, z, s, h, d))
                 rem_tp -= 1
                 start += entry_len
             tp['points'].extend(points)
-            pc = (50*(count-rem_tp))/count
-            progress = '%s%s: %d%%' % ('+'*pc, '.'*(50-pc), 2*pc)
-            print 'TP: ', progress, '\r', 
+            pc = (50 * (count - rem_tp)) // count
+            progress = '%s%s: %d%%' % ('+' * pc, '.' * (50 - pc), 2 * pc)
+            print('TP: ', progress, '\r', end='')
             sys.stdout.flush()
             if start < len(resp):
                 self.log.error("Remaining bytes: %s" % hexdump(resp[start:]))
-        print ''
+        print('')
         return tp
 
-    def _request_device(self, command, params='', accept=[], debug=False):
-        req = struct.pack('>BHB', self.CMD_PREFIX, 1+len(params), command)
+    def _request_device(self, command, params=b'', accept=None, debug=False):
+        if accept is None:
+            accept = []
+        req = struct.pack('>BHB', self.CMD_PREFIX, 1 + len(params), command)
         req += params
         req += struct.pack('>B', self._calc_checksum(req[1:]))
         self._port.timeout = 2
@@ -225,7 +227,7 @@ class KeymazePort(object):
         self._port.timeout = 1
         if not len(cksum):
             raise AssertionError('Communication error')
-        rcksum = ord(cksum)
+        rcksum = cksum[0]
         dcksum = self._calc_checksum(resp_h[1:], resp)
         if rcksum != dcksum:
             raise AssertionError('Comm. error, checksum error 0x%02x/0x%02x' \
@@ -237,7 +239,7 @@ class KeymazePort(object):
         cksum = 0x0
         for data in args:
             for b in data:
-                cksum ^= ord(b)
+                cksum ^= b
         return cksum
 
     def _drain(self):
@@ -246,12 +248,13 @@ class KeymazePort(object):
         while True:
             try:
                 time.sleep(0.01)
-                rem = self._port.inWaiting()
+                rem = self._port.in_waiting
             except IOError:
                 rem = 0
-            for ch in range(rem):
+            for _ in range(rem):
                 self._port.read()
             if not rem:
                 break
         # restore timeout
         self._port.timeout = timeout
+
