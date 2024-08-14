@@ -2,14 +2,15 @@
 # Communicate w/ a Decathlon Keymaze 500/700 devices
 #-----------------------------------------------------------------------------
 # @author Emmanuel Blot <manu.blot@gmail.com> (c) 2009
+# Dani Talens <databio@gmail.com>
 # @license MIT License, see LICENSE file
 #-----------------------------------------------------------------------------
 
 import xml.etree.ElementTree as ET
 
 class KmlDoc(object):
-    """Importer/Exporter for Google KML file format
-    """
+    """Importer/Exporter for Google KML file format"""
+    
     def __init__(self, name):
         self.linestyles = {}
         self.root = ET.Element('kml')
@@ -19,7 +20,7 @@ class KmlDoc(object):
         ET.SubElement(self.placemark, 'name').text = name
         
     def _add_linestyle(self, **kwargs):
-        sid = '_'.join(['%s%s' % (k,v) for (k,v) in kwargs.items()])
+        sid = '_'.join(['%s%s' % (k,v) for k,v in kwargs.items()])
         if sid not in self.linestyles:
             self.linestyles[sid] = kwargs.copy()
         return sid
@@ -31,8 +32,8 @@ class KmlDoc(object):
         ET.SubElement(self.placemark, 'styleUrl').text = '#%s' % \
             self._add_linestyle(color='7f7f00ff', width='8')
         ls = ET.SubElement(self.placemark, 'LineString')
-        ET.SubElement(ls, 'extrude').text = extrude and '1' or '0'
-        ET.SubElement(ls, 'tessellate').text = tessellate and '1' or '0'
+        ET.SubElement(ls, 'extrude').text = '1' if extrude else '0'
+        ET.SubElement(ls, 'tessellate').text = '1' if tessellate else '0'
         ET.SubElement(ls, 'altitudeMode').text = 'absolute'
         coord = ET.SubElement(ls, 'coordinates')
         coord.text = '\n'.join([','.join(map(str, 
@@ -40,12 +41,13 @@ class KmlDoc(object):
                                     for tp in trackpoint])
             
     def write(self, out):
-        out.write('<?xml version="1.0" encoding="UTF-8"?>')
-        for (sid, props) in self.linestyles.items():
+        out.write(b'<?xml version="1.0" encoding="UTF-8"?>\n')
+        for sid, props in self.linestyles.items():
             style = ET.SubElement(self.doc, 'Style')
             style.set('id', sid)
             linestyle = ET.SubElement(style, 'LineStyle')
-            for (k,v) in props.items():
+            for k,v in props.items():
                 ET.SubElement(linestyle, k).text = v
-        out.write(ET.tostring(self.root))
+        out.write(ET.tostring(self.root, encoding='utf-8'))
+
 
